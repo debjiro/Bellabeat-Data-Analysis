@@ -1,0 +1,267 @@
+---
+title: "Bella Beat Analysis Project"
+author: "Deborah Odeyemi"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(skimr)
+library(ggplot2)
+library(knitr)
+setwd("C:/Users/debor/Downloads/Bella_beat_extracts/Fitabase Data 4.12.16-5.12.16")
+daily_activity <- read.csv("dailyActivity_merged.csv")
+sleep_day <- read.csv("sleepDay_merged.csv")
+weight_info <- read.csv("weightLogInfo_merged.csv")
+
+```
+
+## Bellabeat Overview
+Bellabeat is a high-tech manufacturer of health-focused products for women. The Bellabeat app provides users with their health data via their smart devices, namely Leaf, Time, and Spring. Data collected from their users are related to their activity, sleep, stress, menstrual cycle, and mindfulness habits. The dataset used for this analysis comprises three main sources from Fitabase, which provides information on daily activity, sleep activity, and weight logs from April 2016 to May 2016.
+```{r}
+
+```
+
+## Business task
+1. To reveal trends in how users interact with their smart devices.
+2. To determine how these identified trends align with the needs and habits of             Bellabeat’s target audience.
+3. To Propose data-driven strategies to better market Bellabeat products.
+
+### Data cleaning and removing of duplicte values
+```{r}
+daily_activity %>% 
+  clean_names() %>% 
+  distinct() %>% 
+  mutate(ActivityDate = mdy(activity_date)) %>% 
+  head()
+
+sleep_day %>% 
+  clean_names() %>% 
+  distinct() %>% 
+  mutate(sleep_day = mdy_hms(sleep_day)) %>% 
+  head()
+
+weight_info %>% 
+  clean_names() %>% 
+  distinct() %>% 
+  mutate(date = mdy_hms(date)) %>% 
+  head()
+
+```
+
+### Checking for number of missing values
+```{r}
+sum(is.na(daily_activity))
+sum(is.na(sleep_day))
+sum(is.na(weight_info))
+```
+
+### Number of unique users in each data set
+
+```{r}
+distinct_daily_activity <- daily_activity %>% 
+  summarise(distinct_users = n_distinct(Id))
+distinct_daily_activity
+```
+
+```{r}
+distinct_sleep_day <- sleep_day %>% 
+  summarise(distinct_users = n_distinct(Id))
+distinct_sleep_day
+```
+
+```{r}
+distinct_weight_log <- weight_info %>% 
+  summarise(distinct_users = n_distinct(Id))
+distinct_weight_log
+```
+### Relationship between sedentary minutes and total steps
+```{r}
+cor_steps_seden <- cor(daily_activity$TotalSteps, daily_activity$SedentaryMinutes)
+```
+### SedentaryMinutes Vs Total steps
+```{r}
+ggplot(data=daily_activity, aes(x = TotalSteps, y = SedentaryMinutes)) + 
+ geom_point( color = "blue") +
+  geom_smooth(method = lm , color = "black")+
+  labs(title = "Sedentary minutes Vs Total steps", x = "Sedentary Minutes", y = " Total Steps" ,
+       subtitle = paste("Correlation Coefficient :", round(cor_steps_seden, 2)))
+```
+
+```{r}
+cor_sleep_bed <- cor(sleep_day$TotalMinutesAsleep, sleep_day$TotalTimeInBed)
+```
+### Total time in bed Vs Total Minutes Asleep
+```{r}
+ggplot(sleep_day, aes(x=TotalMinutesAsleep, y=TotalTimeInBed)) + 
+  geom_point( color = "blue" ) +
+  geom_smooth(method = lm, color = "black") +
+  labs(title = "Total Time in Bed Vs Total Minutes Asleep", x ="Total Minutes Asleep", y = "Total Time in Bed", subtitle = paste("Correlation Coefficient :", round(cor_sleep_bed, 2)))  
+```
+
+### Set the order of the days of the week
+```{r}
+day_levels <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+```
+### Ensuring ActivityDate is in the proper date format
+```{r}
+daily_activity <- daily_activity %>%
+  mutate(ActivityDate = mdy(ActivityDate))
+```
+### Aggregate of sedentary hours by day of the week
+```{r}
+weekly_sedentary <- daily_activity %>%
+  mutate(day_of_week = factor(weekdays(ActivityDate), levels = day_levels)) %>%
+  group_by(day_of_week) %>%
+  summarise(avg_sedentary_hours = mean(SedentaryMinutes / 60, na.rm = TRUE)) 
+```
+###  Sedentary hours Vs Day of the week
+```{r}
+ggplot(weekly_sedentary, aes(x = day_of_week, y = avg_sedentary_hours)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average Sedentary Hours by Day of the Week",
+       x = "Day of the Week", y = "Average Sedentary Hours") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+### View of  column names and structure
+```{r}
+colnames(sleep_day)
+str(sleep_day)
+```
+### Mutate SleepDay to POSIXct format
+```{r}
+sleep_day <- sleep_day %>%
+  mutate(SleepDay = as.POSIXct(SleepDay, format = "%m/%d/%Y %I:%M:%S %p")) %>%
+  mutate(TotalMinutesAsleep = as.numeric(TotalMinutesAsleep))
+```
+### Set the order of the days of the week
+```{r}
+day_levels <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+```
+### A weekly overview of sleep hours
+```{r}
+sleep_day <- sleep_day %>%
+  mutate(day_of_week = factor(weekdays(SleepDay), levels = day_levels))
+
+weekly_sleep <- sleep_day %>%
+  group_by(day_of_week) %>%
+  summarise(avg_sleep_hours = mean(TotalMinutesAsleep / 60, na.rm = TRUE))
+```
+### Average sleep hours Vs Day of the week
+```{r}
+ggplot(weekly_sleep, aes(x = day_of_week, y = avg_sleep_hours)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average Sleep Hours by Day of the Week",
+       x = "Day of the Week", y = "Average Sleep Hours") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+### Merging of datasets by Id to check the level of correlation between variables
+
+```{r}
+sleep_day <-sleep_day %>% 
+  mutate(TotalHoursAsleep = round(TotalMinutesAsleep/60, 2)) 
+
+combined_data <- daily_activity %>% 
+  full_join(sleep_day, by = "Id" ) 
+
+combined_data <- combined_data %>% 
+  drop_na()
+
+head(combined_data, 3)
+```
+
+### Summmary of daily steps
+```{r}
+summary_daily <- daily_activity %>% 
+  group_by(ActivityDate) %>% 
+  summarise(avg_steps = mean(TotalSteps, na.rm = TRUE),
+            avg_calories = mean(Calories, na.rm = TRUE))
+summary_daily
+
+```
+###  Formating of ActivityDate as day-level
+```{r}
+summary_daily <- summary_daily %>%
+    mutate(ActivityDate = as.Date(ActivityDate, format = "%m/%d/%Y"))
+```
+### Line chart showing average daily steps
+```{r}
+ summary_daily %>% 
+    ggplot(aes(x = ActivityDate, y = avg_steps)) +
+    geom_line(color = "blue") +
+    scale_x_date(date_labels = "%Y-%m-%d") +
+    labs(title = " Daily Average Steps", x = "Activity Date", y = "Average Steps") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+### Relationship between Total steps and Calories burnt
+
+```{r}
+ correlationcoef_steps_calo <- cor(daily_activity$TotalSteps, daily_activity$Calories) 
+  correlationcoef_steps_calo
+```
+
+```{r}
+  daily_activity %>% 
+    ggplot(aes(x=TotalSteps , y = Calories ))+
+    geom_point(color = "blue")+
+    geom_smooth(method = "lm" , color = "black")+
+    labs(title = "Relationship between steps taken and calories burnt", x = "Total Steps", y = "Calories ", 
+    subtitle = paste("Correlation Coefficient:",round(correlationcoef_steps_calo, 2))) +
+    theme_minimal()
+
+```
+
+### 2. Relationship between Total steps and Sleep hours 
+
+```{r}
+correlationcoef_sleep_steps <- cor(combined_data$TotalSteps, combined_data$TotalHoursAsleep) 
+  correlationcoef_sleep_steps
+  
+  combined_data %>% 
+    ggplot(aes(x=TotalSteps , y = TotalHoursAsleep ))+
+    geom_point(color = "blue")+
+    geom_smooth(method = "lm" , color = "black")+
+    labs(title = "Relationship between steps taken and sleep time", x = "Total Steps", y = "Hours Asleep ", 
+         subtitle = paste("Correlation Coefficient:",round(correlationcoef_sleep_steps, 2))) +
+    theme_minimal()
+```
+
+## Recommendations
+
+#### Increase Physical Activity:
+Encourage users to aim for at least 10,000 steps per day to improve overall health.
+
+#### Improve Sleep Quality:
+Suggest bedtime routines and sleep hygiene practices to help users get better sleep.
+
+#### Personalized Insights:
+Provide personalized health insights and recommendations based on individual user data.
+
+#### Encourage Weight Tracking:
+Only 8 users have recorded their weight data. Encouraging more users to regularly log their weight can help in providing better health insights and tracking progress over time.
+
+
+#### Promote Consistent Usage:
+Due to inconsistencies in data logging due to irregular usage of the app and devices, we can implement features that motivate users to consistently log their data, such as streaks, badges, and rewards for continuous usage.
+
+## Further Analysis Ideas: 
+Incorporate Age Group Insights:
+Conduct further analysis to understand usage patterns across different age groups.
+Customize marketing messages and product features to address the specific needs and preferences of various age demographics.
+
+
+
+
+
