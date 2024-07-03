@@ -8,6 +8,7 @@ Bellabeat is a high-tech manufacturer of health-focused products for women. The 
 3. To Propose data-driven strategies to better market Bellabeat products.
 
 [Click here to view the report](https://github.com/debjiro/Bellabeat-Data-Analysis.git)
+[report](file:///C:/Users/debor/Downloads/Bella_beat_final.html)
 
 ## Recommendations
 
